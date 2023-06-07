@@ -19,31 +19,34 @@ def grlex(monomial_1, monomial_2):
         return sum_1 > sum_2
 
 class ZTuple:
-    def __init__(self, tuple_: tuple[int], order = grlex):
-        for integer in tuple_:
+    def __init__(self, z_tuple: tuple[int], order = grlex):
+        for integer in z_tuple:
             if integer < 0:
                 raise ValueError('Negative value in tuple')
-        self.tuple = tuple_
+
+        if type(z_tuple) != tuple:
+            raise TypeError('ZTuple only accepts tuples')
+
+        self.tuple = z_tuple
         self.order = order
 
-    def __add__(self, tuple_):
-        if len(self.tuple) != len(tuple_.tuple):
+    def __add__(self, z_tuple):
+        if len(self.tuple) != len(z_tuple.tuple):
             raise IndexError('The tuples has not the same length')
 
-        new_tuple = tuple([self.tuple[_] + tuple_.tuple[_]
+        new_tuple = tuple([self.tuple[_] + z_tuple.tuple[_]
                            for _ in range(len(self.tuple))])
 
         return ZTuple(new_tuple)
 
-    def __eq__(self, tuple_):
-        print(tuple_.tuple)
-        return self.tuple == tuple_.tuple
+    def __eq__(self, z_tuple):
+        return self.tuple == z_tuple.tuple
 
     def __hash__(self):
         return self.tuple.__hash__()
 
-    def __gt__(self, tuple_):
-        return self.order(self.tuple, tuple_.tuple)
+    def __gt__(self, z_tuple):
+        return self.order(self.tuple, z_tuple.tuple)
 
     def __iter__(self):
         return self.tuple.__iter__()
@@ -51,14 +54,14 @@ class ZTuple:
     def __len__(self):
         return len(self.tuple)
     
-    def __getitem__(self,  i):
+    def __getitem__(self, i):
         return self.tuple[i]
 
 class Term:
     def __init__(self, coefficient, monomial_tuple: tuple,
-                 variables, order = grlex):
+                 variables: list[str], order = grlex):
         self.coefficient = coefficient
-        self.monomial_tuple = ZTuple(tuple_ = monomial_tuple, order = order)
+        self.monomial_tuple = ZTuple(z_tuple = monomial_tuple, order = order)
         self.variables = variables
         self.order = order
 
@@ -75,7 +78,12 @@ class Term:
             string_representation = str(self.coefficient)
 
         for i in range(len(self.monomial_tuple)):
-            string_representation += self.variables[i] + '^' + str(self.monomial_tuple[i])
+            if(self.monomial_tuple[i] != 0):
+                if(self.monomial_tuple[i] == 1):
+                    string_representation += self.variables[i]
+                else:
+                    string_representation += self.variables[i]\
+                        + '^' + str(self.monomial_tuple[i])
         
         return string_representation
 
@@ -113,7 +121,7 @@ class Polynomial:
                     sum_coeff += term.coefficient
 
             if sum_coeff != 0:
-                new_terms.append(Term(sum_coeff, monomial, self.variables))
+                new_terms.append(Term(sum_coeff, monomial.tuple, self.variables))
 
         self.terms = new_terms
         self.sort()
@@ -186,5 +194,5 @@ t4 = Term(1, (1,), ['x'])
 
 #f = Polynomial([t1, t2], ['x'])
 #g = Polynomial([t3, t4], ['x'])
-f = Polynomial([t1], ['x'])
+f = Polynomial([t1, t2], ['x'])
 print(f)
