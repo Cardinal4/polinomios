@@ -1,166 +1,190 @@
 from functools import cmp_to_key
 
+def lex(monomial_1, monomial_2): #COMPARA monomial_1 >= monomial_2
+    for i in range(len(monomial_1)):
+        if monomial_1[i] > monomial_2[i]:
+            return True
+        elif monomial_1[i] < monomial_2[i]:
+            return False
+
+    return True
+
+def grlex(monomial_1, monomial_2):
+    sum_1 = sum(monomial_1)
+    sum_2 = sum(monomial_2)
+
+    if sum_1 == sum_2:
+        return lex(monomial_1, monomial_2)
+    else:
+        return sum_1 > sum_2
+
+class ZTuple:
+    def __init__(self, tuple_: tuple[int], order = grlex):
+        for integer in tuple_:
+            if integer < 0:
+                raise ValueError('Negative value in tuple')
+        self.tuple = tuple_
+        self.order = order
+
+    def __add__(self, tuple_):
+        if len(self.tuple) != len(tuple_.tuple):
+            raise IndexError('The tuples has not the same length')
+
+        new_tuple = tuple([self.tuple[_] + tuple_.tuple[_]
+                           for _ in range(len(self.tuple))])
+
+        return ZTuple(new_tuple)
+
+    def __eq__(self, tuple_):
+        print(tuple_.tuple)
+        return self.tuple == tuple_.tuple
+
+    def __hash__(self):
+        return self.tuple.__hash__()
+
+    def __gt__(self, tuple_):
+        return self.order(self.tuple, tuple_.tuple)
+
+    def __iter__(self):
+        return self.tuple.__iter__()
+
+    def __len__(self):
+        return len(self.tuple)
+    
+    def __getitem__(self,  i):
+        return self.tuple[i]
+
 class Term:
-
-    def __init__(self, coefficient, monomyal_tuple, variables):
-
+    def __init__(self, coefficient, monomial_tuple: tuple,
+                 variables, order = grlex):
         self.coefficient = coefficient
-        self.monomyal_tuple = monomyal_tuple
-        self.variables = variables
-
-    def __eq__(self, o):
-
-        return self.monomyal_tuple == o.monomyal_tuple and self.coefficient == o.coefficient
-    
-    def __str__(self):
-        
-        if(self.is_constant()):
-            return str(self.coefficient)
-        
-        string_representation = ""
-
-        if(self.coefficient != 1):
-            
-            string_representation = str(self.coefficient)
-            
-
-        for i in range(len(self.monomyal_tuple)):
-
-            if(self.monomyal_tuple[i] != 0):
-
-
-                if(self.monomyal_tuple[i] == 1):
-                    string_representation += self.variables[i]
-                else:
-                    string_representation += self.variables[i] + "^" + str(self.monomyal_tuple[i])
-
-        return string_representation
-    
-    def is_constant(self):
-
-        zero_tuple = tuple( [0 for _ in self.monomyal_tuple])
-
-        return zero_tuple == self.monomyal_tuple
-
-class Polynomial:
-
-    def __init__(self, terms, variables, order):
-
-        self.terms = terms
+        self.monomial_tuple = ZTuple(tuple_ = monomial_tuple, order = order)
         self.variables = variables
         self.order = order
 
+    def __eq__(self, o):
+        return self.monomial_tuple == o.monomial_tuple\
+            and self.coefficient == o.coefficient
+
+    def __str__(self):
+        if self.is_constant():
+            return str(self.coefficient)
+        string_representation = ''
+
+        if self.coefficient != 1:            
+            string_representation = str(self.coefficient)
+
+        for i in range(len(self.monomial_tuple)):
+            string_representation += self.variables[i] + '^' + str(self.monomial_tuple[i])
+        
+        return string_representation
+
+    def __gt__(self, o):
+        self.order(self.monomial_tuple, o.monomial_tuple)
+
+    def __mul__(self, o):
+        new_coeff = self.coefficient * o.coefficient
+        new_tuple = self.monomial_tuple + o.monomial_tuple
+
+        return Term(new_coeff, new_tuple, self.variables, self.order)
+
+    def is_constant(self):
+        zero_tuple = ZTuple(tuple([0] * len(self.monomial_tuple)),
+                            order = self.order)
+
+        return zero_tuple == self.monomial_tuple
+
+class Polynomial:
+    def __init__(self, terms, variables, order = grlex):
+        self.terms = terms
+        self.variables = variables
+        self.order = order
         self.clean()
 
     def clean(self): #HAY QUE PROBAR ESTE MÉTODO!!!
-
-        monomyals = list(set([term.monomyal_tuple for term in self.terms]))
-
+        monomials = set([term.monomial_tuple for term in self.terms])
         new_terms = []
 
-        for monomyal in monomyals:
-
+        for monomial in monomials:
             sum_coeff = 0
 
             for term in self.terms:
-
-                if(term.monomyal_tuple == monomyal):
-
+                if term.monomial_tuple == monomial:
                     sum_coeff += term.coefficient
 
-            if(sum_coeff != 0):
-                new_terms.append(Term(sum_coeff, monomyal, self.variables))
+            if sum_coeff != 0:
+                new_terms.append(Term(sum_coeff, monomial, self.variables))
 
         self.terms = new_terms
-
         self.sort()
 
     def __str__(self):
-
-       # self.clean()
-
-        string_representation = ""
+        #self.clean()
+        string_representation = ''
 
         for term in self.terms:
+            string_representation += str(term) + ' + '
 
-            string_representation += str(term) + " + "
-
-        return string_representation[0:-2]
-
+        return string_representation[0 : -2]
 
     def __add__(self, o):
-
         h = Polynomial(self.terms + o.terms, self.variables, self.order)
-
         h.clean()
 
         return h
-    
-    @staticmethod
-    def lex(monomyal_1, monomyal_2): #COMPARA monomyal_1 >= monomyal_2
 
-        n = len(monomyal_1)
+    def __mul__(self, o):
+        h = Polynomial([term1 * term2 for term1 in self.terms
+                        for term2 in o.terms], self.variables, self.order)
+        h.clean()
 
-        for i in range(0, n):
+        return h
 
-            if(monomyal_1[i] > monomyal_2[i]):
-                return True
-            elif(monomyal_1[i] < monomyal_2[i]):
-                return False
-
-            
-        return True
-    
-    @staticmethod
-    def grlex(monomyal_1, monomyal_2):
-
-        n = len(monomyal_1)
-
-        sum_1 = 0
-        sum_2 = 0
-
-        for i in range(0, n):
-            sum_1 += monomyal_1[i]
-            sum_2 += monomyal_2[i]
-
-        if(sum_1 == sum_2):
-            return Polynomial.lex(monomyal_1, monomyal_2)
-        else:
-            return sum_1 > sum_2
-        
     @staticmethod
     def compare(order):
 
         def inner(term_1, term_2):
 
-            monomyal_1 = term_1.monomyal_tuple
-            monomyal_2 = term_2.monomyal_tuple
+            monomial_1 = term_1.monomial_tuple
+            monomial_2 = term_2.monomial_tuple
 
-            if monomyal_1 == monomyal_2:
+            if monomial_1 == monomial_2:
                 return 0
-            elif order(monomyal_1, monomyal_2):
+            elif order(monomial_1, monomial_2):
                 return -1
             else:
                 return 1
             
         return inner
-    
+
     def sort(self):
+        self.terms = sorted(self.terms,
+                            key = cmp_to_key(Polynomial.compare(self.order)))
 
-        self.terms = sorted(self.terms, key=cmp_to_key(Polynomial.compare(self.order)))
-
-vars = ["x", "y"]
+'''vars = ['x', 'y']
 
 t1 = Term(2, (1, 3), vars)
 t2 = Term(3, (0, 3), vars)
 t3 = Term(1, (0, 1), vars)
 t4 = Term(1, (1, 0), vars)
 
-f = Polynomial([t1, t2, t3, t4], vars, order = Polynomial.grlex)
-g = Polynomial([t1, t2, t3, t4], vars, order = Polynomial.grlex)
+f = Polynomial([t1, t2, t3, t4], vars, order = grlex)
+g = Polynomial([t1, t2, t3, t4], vars, order = grlex)
 
 print(f)
 print(g)
 print(f + g)
 
+t1 = Term(2, (1, 1), ['x', 'y'])
+t2 = Term(3, (1, 0), ['x', 'y'])
+print(t1 * t2)'''
 
+t1 = Term(1, (0,), ['x'])
+t2 = Term(1, (1,), ['x'])
+t3 = Term(-1, (0,), ['x'])
+t4 = Term(1, (1,), ['x'])
+
+#f = Polynomial([t1, t2], ['x'])
+#g = Polynomial([t3, t4], ['x'])
+f = Polynomial([t1], ['x'])
+print(f)
