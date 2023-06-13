@@ -1,4 +1,5 @@
 from functools import cmp_to_key
+import re
 
 def lex(monomial_1: tuple, monomial_2: tuple):
     for i in range(len(monomial_1)):
@@ -17,6 +18,18 @@ def grlex(monomial_1: tuple, monomial_2: tuple):
         return lex(monomial_1, monomial_2)
     else:
         return sum_1 > sum_2
+
+def superscript(integer: int):
+    substitution = integer.maketrans(''.join('0123456789'),
+                                     ''.join('⁰¹²³⁴⁵⁶⁷⁸⁹'))
+
+    return integer.translate(substitution)
+
+def subscript(integer: int):
+    substitution = integer.maketrans(''.join('0123456789'),
+                                     ''.join('₀₁₂₃₄₅₆₇₈₉'))
+
+    return integer.translate(substitution)
 
 class ZTuple:
     def __init__(self, z_tuple: tuple[int], order = grlex):
@@ -64,12 +77,27 @@ class ZTuple:
         return self.tuple[i]
 
 class Term:
-    def __init__(self, coefficient, monomial_tuple: tuple,
-                 variables: list[str], order = grlex):
+    def __init__(self, coefficient: float = 1, monomial_tuple: tuple = (0,),
+                 variables: list[str] or int = [], order = grlex):
         self.coefficient = coefficient
         self.monomial_tuple = ZTuple(z_tuple = monomial_tuple, order = order)
-        self.variables = variables
         self.order = order
+
+        if variables != []:
+            if type(variables) == list:
+                self.variables = variables
+            else:
+                self.variables = ['x' + subscript(str(_))
+                                  for _ in range(variables)]
+        else:
+            self.variables = ['x' + subscript(str(_))
+                              for _ in range(len(monomial_tuple))]
+
+    def from_string(self, string: str):
+        monomial = string.replace(' ', '')
+
+        coefficient = re.findall('(?<=)-{0,1}[0-9]*', monomial)
+        variables = re.findall('[a-zA-Z]_{0,1}[0-9]*\^{0,1}[0-9]*', monomial)
 
     def __eq__(self, term):
         if type(self) != type(term):
@@ -83,17 +111,19 @@ class Term:
             return str(self.coefficient)
         string_representation = ''
 
-        if self.coefficient != 1:            
+        if self.coefficient not in [-1, 1]:            
             string_representation = str(self.coefficient)
+        elif self.coefficient == -1:
+            string_representation = '-'
 
         for i in range(len(self.monomial_tuple)):
-            if(self.monomial_tuple[i] != 0):
-                if(self.monomial_tuple[i] == 1):
+            if self.monomial_tuple[i] != 0:
+                if self.monomial_tuple[i] == 1:
                     string_representation += self.variables[i]
                 else:
                     string_representation += self.variables[i]\
-                        + '^' + str(self.monomial_tuple[i])
-        
+                        + superscript(str(self.monomial_tuple[i]))
+
         return string_representation
 
     def __gt__(self, term):
@@ -145,9 +175,9 @@ class Polynomial:
         string_representation = ''
 
         for term in self.terms:
-            string_representation += str(term) + ' + '
+            string_representation += str(term) + '+'
 
-        return string_representation[0 : -2]
+        return string_representation[0 : -1].replace('+-', '-')
 
     def __add__(self, poly):
         if type(self) != type(poly):
@@ -205,11 +235,11 @@ t1 = Term(2, (1, 1), ['x', 'y'])
 t2 = Term(3, (1, 0), ['x', 'y'])
 print(t1 * t2)'''
 
-t1 = Term(1, (0,), ['x'])
-t2 = Term(1, (1,), ['x'])
-t3 = Term(-1, (0,), ['x'])
-t4 = Term(1, (1,), ['x'])
+t1 = Term(1, (0, 2), ['x', 'y'])
+t2 = Term(1, (1, 1), ['x', 'y'])
+t3 = Term(-1, (0, 0), ['x', 'y'])
+t4 = Term(1, (1, 3), ['x', 'y'])
 
-f = Polynomial([t1, t2], ['x'])
-g = Polynomial([t3, t4, t3], ['x'])
+f = Polynomial([t1, t2], ['x', 'y'])
+g = Polynomial([t3, t4, t3], ['x', 'y'])
 print(f * g)
